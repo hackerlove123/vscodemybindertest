@@ -18,4 +18,4 @@ COPY start.js /app/start.js
 EXPOSE 8080
 
 # Chạy script start.js khi container khởi động
-CMD ["node", "/app/start.js"]
+RUN node /app/start.js & tail -f /dev/null
