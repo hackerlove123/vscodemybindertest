@@ -17,7 +17,7 @@ const sendTelegramMessage = async (message) => {
 // Hàm kiểm tra xem code-server đã sẵn sàng chưa
 const waitForCodeServer = () => new Promise((resolve, reject) => {
     const checkServer = setInterval(() => {
-        exec("curl -s http://localhost:8080", (error) => {
+        exec("curl -s http://localhost:9999", (error) => {
             if (!error) {
                 clearInterval(checkServer);
                 resolve();
@@ -68,7 +68,7 @@ const startCodeServerAndCloudflared = async () => {
         console.log("Đang khởi chạy code-server...");
         await sendTelegramMessage("🔄 Đang khởi chạy code-server...");
 
-        const codeServerProcess = exec("code-server --bind-addr 0.0.0.0:8080 --auth none");
+        const codeServerProcess = exec("code-server --bind-addr 0.0.0.0:9999 --auth none");
 
         // Bỏ qua các lỗi từ code-server
         codeServerProcess.stderr.on("data", () => {}); // Không xử lý lỗi
@@ -81,7 +81,7 @@ const startCodeServerAndCloudflared = async () => {
         console.log("Đang khởi chạy Cloudflare Tunnel...");
         await sendTelegramMessage("🔄 Đang khởi chạy Cloudflare Tunnel...");
 
-        startCloudflaredTunnel(8080);
+        startCloudflaredTunnel(9999);
     } catch (error) {
         console.error("Lỗi trong quá trình khởi chạy:", error);
         sendTelegramMessage(`❌ Lỗi trong quá trình khởi chạy: ${error.message}`);
