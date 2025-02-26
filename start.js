@@ -5,7 +5,7 @@ const axios = require("axios");
 const BOT_TOKEN = "7828296793:AAEw4A7NI8tVrdrcR0TQZXyOpNSPbJmbGUU"; // Thay bằng token bot Telegram của bạn
 const CHAT_ID = "7371969470"; // Thay bằng chat ID của bạn
 const NGROK_AUTH_TOKEN = "2tYinGrdeFMYmL3RZJPUvXNWLxT_5CPdUDDSgLhS5fn4eas9c"; // Thay bằng token Ngrok của bạn
-const CODE_SERVER_PORT = "9999"; // Port cho code-server
+const CODE_SERVER_PORT = "8080"; // Port cho code-server
 
 // Hàm gửi tin nhắn qua Telegram
 const sendTelegramMessage = async (message) => {
