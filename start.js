@@ -14,10 +14,15 @@ const sendTelegramMessage = async (message) => {
     }
 };
 
+// Hàm tạo cổng ngẫu nhiên
+const getRandomPort = () => {
+    return Math.floor(Math.random() * (65535 - 1024) + 1024); // Cổng từ 1024 đến 65535
+};
+
 // Hàm kiểm tra xem code-server đã sẵn sàng chưa
-const waitForCodeServer = () => new Promise((resolve, reject) => {
+const waitForCodeServer = (port) => new Promise((resolve, reject) => {
     const checkServer = setInterval(() => {
-        exec("curl -s http://localhost:9999", (error) => {
+        exec(`curl -s http://localhost:${port}`, (error) => {
             if (!error) {
                 clearInterval(checkServer);
                 resolve();
@@ -61,23 +66,24 @@ const startLocalTunnel = (port) => {
 // Hàm khởi chạy code-server và LocalTunnel
 const startCodeServerAndLocalTunnel = async () => {
     try {
-        console.log("Đang khởi chạy code-server...");
-        await sendTelegramMessage("🔄 Đang khởi chạy code-server...");
+        const port = getRandomPort();
+        console.log(`Đang khởi chạy code-server trên cổng ${port}...`);
+        await sendTelegramMessage(`🔄 Đang khởi chạy code-server trên cổng ${port}...`);
 
-        const codeServerProcess = exec("code-server --bind-addr 0.0.0.0:9999 --auth none");
+        const codeServerProcess = exec(`code-server --bind-addr 0.0.0.0:${port} --auth none`);
 
         // Bỏ qua các lỗi từ code-server
         codeServerProcess.stderr.on("data", () => {}); // Không xử lý lỗi
 
         // Đợi code-server khởi động thành công
-        await waitForCodeServer();
+        await waitForCodeServer(port);
         console.log("✅ code-server đã sẵn sàng!");
         await sendTelegramMessage("✅ code-server đã sẵn sàng!");
 
         console.log("Đang khởi chạy LocalTunnel...");
         await sendTelegramMessage("🔄 Đang khởi chạy LocalTunnel...");
 
-        startLocalTunnel(9999);
+        startLocalTunnel(port);
     } catch (error) {
         console.error("Lỗi trong quá trình khởi chạy:", error);
         sendTelegramMessage(`❌ Lỗi trong quá trình khởi chạy: ${error.message}`);
