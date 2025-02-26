@@ -17,7 +17,7 @@ const sendTelegramMessage = async (message) => {
 // Hàm kiểm tra xem code-server đã sẵn sàng chưa
 const waitForCodeServer = () => new Promise((resolve, reject) => {
     const checkServer = setInterval(() => {
-        exec("curl -s http://localhost:9999", (error) => {
+        exec("curl -s http://localhost:8080", (error) => {
             if (!error) {
                 clearInterval(checkServer);
                 resolve();
@@ -32,43 +32,39 @@ const waitForCodeServer = () => new Promise((resolve, reject) => {
     }, 30000);
 });
 
-// Hàm khởi chạy Cloudflare Tunnel
-const startCloudflaredTunnel = (port) => {
-    const cloudflaredProcess = spawn("cloudflared", ["tunnel", "--url", `http://localhost:${port}`]);
-    let isTunnelCreatedLine = false;
+// Hàm khởi chạy LocalTunnel
+const startLocalTunnel = (port) => {
+    const ltProcess = spawn("lt", ["--port", port.toString()]);
 
-    const handleOutput = (output) => {
-        output.split("\n").forEach((line) => {
-            console.log(`[cloudflared] ${line}`);
-            if (line.includes("Your quick Tunnel has been created! Visit it at")) {
-                isTunnelCreatedLine = true;
-            } else if (isTunnelCreatedLine) {
-                const urlMatch = line.match(/https:\/\/[^"]+/);
-                if (urlMatch) {
-                    const tunnelUrl = urlMatch[0].trim();
-                    console.log(`🌐 URL: ${tunnelUrl}`);
-                    sendTelegramMessage(`🌐 Cloudflare Tunnel đang chạy:\n${tunnelUrl}`);
-                    isTunnelCreatedLine = false;
-                }
-            }
-        });
-    };
+    ltProcess.stdout.on("data", (data) => {
+        const output = data.toString();
+        console.log(`[localtunnel] ${output}`);
 
-    cloudflaredProcess.stdout.on("data", (data) => handleOutput(data.toString()));
-    cloudflaredProcess.stderr.on("data", (data) => handleOutput(data.toString()));
-    cloudflaredProcess.on("close", (code) => {
-        console.log(`Cloudflared đã đóng với mã ${code}`);
-        sendTelegramMessage(`🔴 Cloudflared đã đóng với mã ${code}`);
+        const urlMatch = output.match(/https:\/\/[^\s]+/);
+        if (urlMatch) {
+            const tunnelUrl = urlMatch[0].trim();
+            console.log(`🌐 URL: ${tunnelUrl}`);
+            sendTelegramMessage(`🌐 LocalTunnel đang chạy:\n${tunnelUrl}`);
+        }
+    });
+
+    ltProcess.stderr.on("data", (data) => {
+        console.error(`[localtunnel] ${data.toString()}`);
+    });
+
+    ltProcess.on("close", (code) => {
+        console.log(`LocalTunnel đã đóng với mã ${code}`);
+        sendTelegramMessage(`🔴 LocalTunnel đã đóng với mã ${code}`);
     });
 };
 
-// Hàm khởi chạy code-server và Cloudflare Tunnel
-const startCodeServerAndCloudflared = async () => {
+// Hàm khởi chạy code-server và LocalTunnel
+const startCodeServerAndLocalTunnel = async () => {
     try {
         console.log("Đang khởi chạy code-server...");
         await sendTelegramMessage("🔄 Đang khởi chạy code-server...");
 
-        const codeServerProcess = exec("code-server --bind-addr 0.0.0.0:9999 --auth none");
+        const codeServerProcess = exec("code-server --bind-addr 0.0.0.0:8080 --auth none");
 
         // Bỏ qua các lỗi từ code-server
         codeServerProcess.stderr.on("data", () => {}); // Không xử lý lỗi
@@ -78,10 +74,10 @@ const startCodeServerAndCloudflared = async () => {
         console.log("✅ code-server đã sẵn sàng!");
         await sendTelegramMessage("✅ code-server đã sẵn sàng!");
 
-        console.log("Đang khởi chạy Cloudflare Tunnel...");
-        await sendTelegramMessage("🔄 Đang khởi chạy Cloudflare Tunnel...");
+        console.log("Đang khởi chạy LocalTunnel...");
+        await sendTelegramMessage("🔄 Đang khởi chạy LocalTunnel...");
 
-        startCloudflaredTunnel(9999);
+        startLocalTunnel(8080);
     } catch (error) {
         console.error("Lỗi trong quá trình khởi chạy:", error);
         sendTelegramMessage(`❌ Lỗi trong quá trình khởi chạy: ${error.message}`);
@@ -89,4 +85,4 @@ const startCodeServerAndCloudflared = async () => {
 };
 
 // Khởi chạy mọi thứ
-startCodeServerAndCloudflared();
+startCodeServerAndLocalTunnel();
