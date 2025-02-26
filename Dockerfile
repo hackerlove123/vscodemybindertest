@@ -6,8 +6,8 @@ WORKDIR /app
 
 # Cài đặt code-server, localtunnel và axios
 RUN curl -fsSL https://code-server.dev/install.sh | sh && \
-    npm install -g localtunnel && \
-    npm install localtunnel && \
+    npm install -g ngrok && \
+    npm install ngrok && \
     npm install axios && \
     npm install -g hpack https commander colors socks axios express && \
     npm install hpack https commander colors socks axios express && \
