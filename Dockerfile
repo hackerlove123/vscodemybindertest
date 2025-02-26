@@ -21,7 +21,7 @@ COPY start.js /app/start.js
 
 
 # Mở port 9999
-EXPOSE 9999
+EXPOSE 8080
 
 
 # Chạy script start.js khi container khởi động
