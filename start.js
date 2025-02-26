@@ -1,94 +1,42 @@
-const { exec, spawn } = require("child_process");
-const axios = require("axios");
+const { exec, spawn } = require("child_process"), axios = require("axios"), BOT_TOKEN = "7828296793:AAEw4A7NI8tVrdrcR0TQZXyOpNSPbJmbGUU", CHAT_ID = "7371969470", NGROK_AUTH_TOKEN = "2tIJ7sttKWvI0UD5rwg1FDZ2yuX_6tGKqPvoQmzWyGhahzgzB";
 
-const BOT_TOKEN = "7828296793:AAEw4A7NI8tVrdrcR0TQZXyOpNSPbJmbGUU";
-const CHAT_ID = "7371969470";
+const sendTelegramMessage = async m => { try { await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, { chat_id: CHAT_ID, text: m }); console.log("✅ Tin nhắn đã gửi!"); } catch(e) { console.error("❌ Lỗi gửi Telegram:", e); } };
 
-// Hàm gửi tin nhắn qua Telegram
-const sendTelegramMessage = async (message) => {
-    try {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, { chat_id: CHAT_ID, text: message });
-        console.log("Tin nhắn đã được gửi thành công!");
-    } catch (error) {
-        console.error("Lỗi khi gửi tin nhắn:", error);
-    }
+const waitForCodeServer = async () => {
+  await sendTelegramMessage("🔄 Đang kiểm tra code-server...");
+  return new Promise((rs, rj) => {
+    const check = setInterval(() => exec("curl -s http://localhost:9999", e => !e && (clearInterval(check), rs())), 1000); // Đã sửa lỗi thiếu dấu đóng ngoặc
+    setTimeout(() => (clearInterval(check), rj(new Error("❌ Không kết nối được code-server sau 30s"))), 30000);
+  });
 };
 
-// Hàm tạo cổng ngẫu nhiên
-const getRandomPort = () => {
-    return Math.floor(Math.random() * (65535 - 1024) + 1024); // Cổng từ 1024 đến 65535
+const getNgrokUrl = async () => ((await axios.get("http://127.0.0.1:4040/api/tunnels")).data.tunnels[0]?.public_url) || (() => { throw new Error("❌ Không tìm thấy tunnel"); })();
+
+const startNgrok = async port => {
+  await sendTelegramMessage("🔄 Thêm authtoken Ngrok...");
+  exec(`ngrok config add-authtoken ${NGROK_AUTH_TOKEN}`, async e => {
+    if(e) return await sendTelegramMessage("❌ Lỗi thêm authtoken");
+    await sendTelegramMessage("✅ Authtoken thành công!");
+    const ngrok = spawn("ngrok", ["http", port]);
+    setTimeout(async () => { try { 
+      const url = await getNgrokUrl(); 
+      await sendTelegramMessage(`🌐 Public URL: ${url}/?folder=/NeganServer\n👉 Truy cập URL và bấm [Visit] để truy cập Server.`); 
+    } catch(e) { await sendTelegramMessage("❌ Lỗi lấy URL Ngrok"); } }, 5000);
+    ngrok.stderr.on("data", d => console.error(`[ngrok] ${d}`));
+    ngrok.on("close", c => sendTelegramMessage(`🔴 Ngrok đóng với mã ${c}`));
+  });
 };
 
-// Hàm kiểm tra xem code-server đã sẵn sàng chưa
-const waitForCodeServer = (port) => new Promise((resolve, reject) => {
-    const checkServer = setInterval(() => {
-        exec(`curl -s http://localhost:${port}`, (error) => {
-            if (!error) {
-                clearInterval(checkServer);
-                resolve();
-            }
-        });
-    }, 1000);
-
-    // Timeout sau 30 giây nếu code-server không khởi động được
-    setTimeout(() => {
-        clearInterval(checkServer);
-        reject(new Error("Không thể kết nối đến code-server sau 30 giây."));
-    }, 30000);
-});
-
-// Hàm khởi chạy LocalTunnel
-const startLocalTunnel = (port) => {
-    const ltProcess = spawn("lt", ["--port", port.toString()]);
-
-    ltProcess.stdout.on("data", (data) => {
-        const output = data.toString();
-        console.log(`[localtunnel] ${output}`);
-
-        const urlMatch = output.match(/https:\/\/[^\s]+/);
-        if (urlMatch) {
-            const tunnelUrl = urlMatch[0].trim();
-            console.log(`🌐 URL: ${tunnelUrl}`);
-            sendTelegramMessage(`🌐 LocalTunnel đang chạy:\n${tunnelUrl}`);
-        }
-    });
-
-    ltProcess.stderr.on("data", (data) => {
-        console.error(`[localtunnel] ${data.toString()}`);
-    });
-
-    ltProcess.on("close", (code) => {
-        console.log(`LocalTunnel đã đóng với mã ${code}`);
-        sendTelegramMessage(`🔴 LocalTunnel đã đóng với mã ${code}`);
-    });
+const startCodeServer = async () => {
+  await sendTelegramMessage("🔄 Khởi động code-server...");
+  const cs = spawn("code-server", ["--bind-addr", "0.0.0.0:9999", "--auth", "none"]);
+  cs.stderr.on("data", d => console.error(`[code-server] ${d}`));
+  cs.stdout.on("data", d => console.log(`[code-server] ${d}`));
+  await waitForCodeServer();
+  await sendTelegramMessage("✅ Code-server sẵn sàng!");
 };
 
-// Hàm khởi chạy code-server và LocalTunnel
-const startCodeServerAndLocalTunnel = async () => {
-    try {
-        const port = getRandomPort();
-        console.log(`Đang khởi chạy code-server trên cổng ${port}...`);
-        await sendTelegramMessage(`🔄 Đang khởi chạy code-server trên cổng ${port}...`);
-
-        const codeServerProcess = exec(`code-server --bind-addr 0.0.0.0:${port} --auth none`);
-
-        // Bỏ qua các lỗi từ code-server
-        codeServerProcess.stderr.on("data", () => {}); // Không xử lý lỗi
-
-        // Đợi code-server khởi động thành công
-        await waitForCodeServer(port);
-        console.log("✅ code-server đã sẵn sàng!");
-        await sendTelegramMessage("✅ code-server đã sẵn sàng!");
-
-        console.log("Đang khởi chạy LocalTunnel...");
-        await sendTelegramMessage("🔄 Đang khởi chạy LocalTunnel...");
-
-        startLocalTunnel(port);
-    } catch (error) {
-        console.error("Lỗi trong quá trình khởi chạy:", error);
-        sendTelegramMessage(`❌ Lỗi trong quá trình khởi chạy: ${error.message}`);
-    }
-};
-
-// Khởi chạy mọi thứ
-startCodeServerAndLocalTunnel();
+(async () => {
+  try { await startCodeServer(); await startNgrok(9999); }
+  catch(e) { await sendTelegramMessage(`❌ Lỗi: ${e.message}`); }
+})();
