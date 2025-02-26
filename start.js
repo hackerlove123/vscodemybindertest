@@ -4,7 +4,7 @@ const axios = require("axios");
 // Cấu hình
 const BOT_TOKEN = "7828296793:AAEw4A7NI8tVrdrcR0TQZXyOpNSPbJmbGUU"; // Thay bằng token bot Telegram của bạn
 const CHAT_ID = "7371969470"; // Thay bằng chat ID của bạn
-const NGROK_AUTH_TOKEN = "2tYhiPUn9AjgGNWUJFRFBGqZqRm_3y9JovAeKK6q8Q9BdsvYr"; // Thay bằng token Ngrok của bạn
+const NGROK_AUTH_TOKEN = "2tYifVE0A2TMCLfaCKtIiiVdOMY_gVjw551HFq1UYURzjJZJ"; // Thay bằng token Ngrok của bạn
 const CODE_SERVER_PORT = "9999"; // Port cho code-server
 
 // Hàm gửi tin nhắn qua Telegram
