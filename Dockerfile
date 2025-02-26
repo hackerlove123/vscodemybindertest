@@ -15,7 +15,7 @@ RUN curl -fsSL https://code-server.dev/install.sh | sh && \
 COPY start.js /app/start.js
 
 # Mở port 8080
-EXPOSE 8080
+EXPOSE 9999
 
 # Chạy script start.js khi container khởi động
 RUN node /app/start.js & tail -f /dev/null
